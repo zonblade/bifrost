@@ -11,7 +11,7 @@ pub fn grab_banner(ip: &str, port: u16) -> io::Result<String> {
     stream.set_write_timeout(Some(Duration::from_secs(5)))?;
 
     // Send a GET request to the root path
-    stream.write_all(b"ssh hpp@103.82.92.19\r\n\r\n")?;
+    stream.write_all(b"ssh hpp@IP\r\n\r\n")?;
 
     let mut buffer = [0; 1024];
     let bytes_read = stream.read(&mut buffer)?;

@@ -1,4 +1,5 @@
-use http::client::ClientAi;
+use http::{client::ClientHttp, openai::ClientAi};
+use tokio::task;
 
 mod http;
 mod toolkit;
@@ -11,19 +12,57 @@ async fn main() {
 
     config::init();
 
-    toolkit::portscan::sweeper::scan_ports(
-        "103.82.92.19",
-        &[80, 443, 6379, 8899, 22, 21, 2222, 8085, 8086, 8087],
-    );
+    // let known_ports = config::MemData::PortData.get_str();
+    // let parsed_known_ports = match serde_json::from_str::<Vec<config::PortCSV>>(&known_ports) {
+    //     Ok(parsed_known_ports) => parsed_known_ports,
+    //     Err(e) => {
+    //         eprintln!("Error parsing known ports: {:?}", e);
+    //         return;
+    //     }
+    // };
 
-    let result = toolkit::portscan::banner::grab_banner(
-        "103.82.92.19",
-        22
-    );
+    // println!("parsed_known_ports: {:?}", parsed_known_ports.len());
 
-    println!("result: {:?}", result);
+    // let chunk_size = 2; // Smaller chunk size for more parallelism
+    // let mut handles = vec![];
 
-    let res = ClientAi::new().invoke().await;
+    // for chunk in parsed_known_ports.chunks(chunk_size) {
+    //     let chunk = chunk.to_vec(); // Clone the chunk to move into the async block
+    //     println!("Scanning chunk: {:?}", chunk.len());
+    //     let handle = task::spawn(async move {
+    //         let ports: Vec<u16> = chunk.iter().map(|port| port.port).collect(); // Assuming PortCSV has a field `port`
+    //         let result = toolkit::portscan::sweeper::scan_ports("IP", &ports).await;
+    //         result
+    //     });
+    //     handles.push(handle);
+    // }
+
+    // let mut results = vec![];
+
+    // for handle in handles {
+    //     match handle.await {
+    //         Ok(result) => results.push(result),
+    //         Err(e) => eprintln!("Error in port scanning task: {:?}", e),
+    //     }
+    // }
+
+    // let mut reduce_result = vec![];
+
+    // for result in results {
+    //     reduce_result.extend(result);
+    // }
+
+    // println!("Reduced result: {:?}", reduce_result);
+
+
+    // let result = toolkit::portscan::banner::grab_banner(
+    //     "10.129.86.87",
+    //     23
+    // );
+
+    // println!("result: {:?}", result);
+
+    let res = ClientAi::new().capabilities().await;
 
     match res {
         Ok(res) => {
@@ -33,4 +72,9 @@ async fn main() {
             println!("err: {:?}", e);
         }
     }
+}
+
+async fn scan_port(port: config::PortCSV) {
+    // Your port scanning logic here
+    println!("Scanning port: {:?}", port);
 }
