@@ -1,10 +1,27 @@
 
 
-pub fn command_suggest(port:i32, desc: String, tech:String)-> String {
+pub fn command_initiate(port:i32, desc: String, tech:String)-> String {
     format!(r#"
-    for port {} (known as {}) those port run on {}, 
-    write a step by step command to interact with this port.
-    but we only able to send package to this port using rust TcpStream,
-    we cannot run cli command in our machine nor using any tools outside TcpStream.
+you're doing ethical hacking. 
+found port {} ({}) opened with {} running behind those port. 
+write first command to initiate attack, 
+you're allowed to do install command (i use debian) if the tools provided is not there.
+
+set <ADDR> for target ip
+
+output: return PLAIN text command only without any formatting nor quote nor anything
     "#,port, desc,tech)
+}
+
+#[allow(dead_code)]
+pub fn command_next(result:String)-> String {
+    format!(r#"
+result:
+
+{}
+
+do next step (until retrive the flag content)
+
+output: PLAIN text command only without any formatting nor quote nor anything, because i want to use for next command
+    "#,result)
 }

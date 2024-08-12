@@ -1,6 +1,10 @@
-mod requests;
+mod invoke;
+mod banner;
+pub mod ports;
 
 use serde::{Deserialize, Serialize};
+
+use crate::config;
 
 pub struct ClientAi {
     client: reqwest::Client,
@@ -10,20 +14,32 @@ pub struct ClientAi {
 
 impl ClientAi{
     pub fn new() -> Self {
+        let model = config::MemData::OpenModel.get_str();
         ClientAi {
             client: reqwest::Client::new(),
             fragment: AiRequest {
-                model: "gpt-4o-mini",
+                model,
                 messages: vec![
                     AiMessage {
                         role: String::from("user"),
                         content: String::from(
-                            r#"please remember, our mission is to find the flag."#
+                            r#"
+[below this chat is start over, does not matter chat before this]
+remember, you're ethical hacker.
+
+note about tools:
+- use tools like nmap, sqlmap, curl, telnet, etc (basic tools)
+- use linux os
+- you are allowed to run install command for the tools if it's not installed
+- do not use tools that require to input file!
+"#
                         ),
                     }
                 ],
-                temperature: 0.6,
-                top_p: 0.7
+                temperature: 0.641123421,
+                top_p: 0.698272817,
+                frequency_penalty: 0.00,
+                presence_penalty: 0.00
             },
         }
     }
@@ -35,9 +51,11 @@ pub struct AiRequest {
     messages: Vec<AiMessage>,
     temperature: f32,
     top_p: f32,
+    presence_penalty: f32,
+    frequency_penalty: f32
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AiMessage {
     pub role: String,
     pub content: String,
@@ -59,7 +77,7 @@ pub struct AiAsistantType {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct AiResult {
-    pub id: String,
+    pub id: Option<String>,
     pub object: String,
     pub created: i64,
     pub model: String,

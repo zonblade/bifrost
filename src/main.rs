@@ -1,80 +1,68 @@
-use http::{client::ClientHttp, openai::ClientAi};
-use tokio::task;
-
-mod http;
-mod toolkit;
 mod config;
+mod http;
+mod log;
+mod toolkit;
+
+use http::openai::ClientAi;
+use log::printlg;
 
 #[tokio::main]
 async fn main() {
-
-    // check if nmap is installed
-
-    config::init();
-
-    // let known_ports = config::MemData::PortData.get_str();
-    // let parsed_known_ports = match serde_json::from_str::<Vec<config::PortCSV>>(&known_ports) {
-    //     Ok(parsed_known_ports) => parsed_known_ports,
-    //     Err(e) => {
-    //         eprintln!("Error parsing known ports: {:?}", e);
-    //         return;
-    //     }
-    // };
-
-    // println!("parsed_known_ports: {:?}", parsed_known_ports.len());
-
-    // let chunk_size = 2; // Smaller chunk size for more parallelism
-    // let mut handles = vec![];
-
-    // for chunk in parsed_known_ports.chunks(chunk_size) {
-    //     let chunk = chunk.to_vec(); // Clone the chunk to move into the async block
-    //     println!("Scanning chunk: {:?}", chunk.len());
-    //     let handle = task::spawn(async move {
-    //         let ports: Vec<u16> = chunk.iter().map(|port| port.port).collect(); // Assuming PortCSV has a field `port`
-    //         let result = toolkit::portscan::sweeper::scan_ports("IP", &ports).await;
-    //         result
-    //     });
-    //     handles.push(handle);
-    // }
-
-    // let mut results = vec![];
-
-    // for handle in handles {
-    //     match handle.await {
-    //         Ok(result) => results.push(result),
-    //         Err(e) => eprintln!("Error in port scanning task: {:?}", e),
-    //     }
-    // }
-
-    // let mut reduce_result = vec![];
-
-    // for result in results {
-    //     reduce_result.extend(result);
-    // }
-
-    // println!("Reduced result: {:?}", reduce_result);
-
-
-    // let result = toolkit::portscan::banner::grab_banner(
-    //     "10.129.86.87",
-    //     23
-    // );
-
-    // println!("result: {:?}", result);
-
-    let res = ClientAi::new().capabilities().await;
-
-    match res {
-        Ok(res) => {
-            println!("res: {:?}", res);
+    let args: Vec<String> = std::env::args().collect();
+    let ip = match args.get(1) {
+        Some(ip) => ip.clone(),
+        None => {
+            printlg("Please provide an IP address".to_string());
+            return;
         }
-        Err(e) => {
-            println!("err: {:?}", e);
-        }
+    };
+    config::init().await;
+
+    printlg("start scanning for open ports".to_string());
+
+    let result = toolkit::portscan::sweeper::scan_port_assumption(ip.clone()).await;
+
+    printlg(format!("found: {} ports open", result.len()));
+
+    if result.is_empty() {
+        printlg("no open port found, aborting".to_string());
+        return;
     }
-}
+    printlg("initiating sequential attack on opened port\n".to_string());
 
-async fn scan_port(port: config::PortCSV) {
-    // Your port scanning logic here
-    println!("Scanning port: {:?}", port);
+    let mut cai = ClientAi::new();
+
+    for port in result {
+        let banner = toolkit::portscan::banner::grab_banner(&ip, port.port);
+        let banner = match banner {
+            Ok(banner) => banner,
+            Err(e) => {
+                eprintln!("Error grabbing banner: {:?}", e);
+                continue;
+            }
+        };
+
+        let parsed_banner = cai.banner_parse(banner).await;
+
+        let desc = match port.desc {
+            Some(desc) => desc,
+            None => String::from("-"),
+        };
+
+        printlg(format!(
+            "initiating attack \n\t-to port : {}\n\t-tech : {}\n\t-server : {}",
+            port.port, desc, parsed_banner
+        ));
+
+        let res = cai.invoke(port.port as i32, desc, parsed_banner).await;
+        let res = match res {
+            Ok(res) => res.replace("<ADDR>", &ip),
+            Err(e) => {
+                eprintln!("Error invoking AI: {:?}", e);
+                return;
+            }
+        };
+
+        printlg(format!("res: {:?}", res));
+    }
 }
