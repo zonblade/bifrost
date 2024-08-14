@@ -2,7 +2,7 @@ use std::net::{TcpStream, SocketAddr};
 use std::io::{self, Write, Read};
 use std::time::Duration;
 
-pub fn grab_banner(ip: &str, port: u16) -> io::Result<String> {
+pub fn grab_banner(ip: &str, port: u32) -> io::Result<String> {
     let address = format!("{}:{}", ip, port);
     let socket_addr: SocketAddr = address.parse().expect("Invalid address");
 
@@ -11,7 +11,7 @@ pub fn grab_banner(ip: &str, port: u16) -> io::Result<String> {
     stream.set_write_timeout(Some(Duration::from_secs(5)))?;
 
     // Send a GET request to the root path
-    stream.write_all(b"ssh hpp@IP\r\n\r\n")?;
+    stream.write_all(b"GET / HTTP/1.1\r\n\r\n")?;
 
     let mut buffer = [0; 1024];
     let bytes_read = stream.read(&mut buffer)?;

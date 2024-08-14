@@ -1,14 +1,20 @@
 use std::net::{SocketAddr, TcpStream};
 use std::time::Duration;
+use pnet::packet::Packet;
 use tokio::sync::mpsc;
 use tokio::task;
+use pnet::packet::tcp::{MutableTcpPacket, TcpFlags};
+use pnet::packet::ip::IpNextHeaderProtocols;
+use pnet::transport::{transport_channel, TransportChannelType, TransportProtocol, ipv4_packet_iter};
+use pnet::util::ipv4_checksum;
+use std::net::{Ipv4Addr, SocketAddrV4};
 
 use crate::log::printlsc;
 use crate::{config, toolkit};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct PortScanner {
-    pub port: u16,
+    pub port: u32,
     #[allow(dead_code)]
     pub open: bool,
     pub proto: Option<String>,
@@ -17,13 +23,13 @@ pub struct PortScanner {
     pub head: Option<String>,
 }
 
-pub async fn scan_ports(ip: &str, ports: &[u16]) -> Vec<PortScanner> {
+pub async fn scan_ports(ip: &str, ports: &[u32]) -> Vec<PortScanner> {
     let mut open_ports = vec![];
     for &port in ports {
         printlsc(format!("Scanning port {}\r", port));
         let address = format!("{}:{}", ip, port);
         let socket_addr: SocketAddr = address.parse().expect("Invalid address");
-        match TcpStream::connect_timeout(&socket_addr, Duration::from_millis(300)) {
+        match TcpStream::connect_timeout(&socket_addr, Duration::from_millis(70)) {
             Ok(_) => {
                 open_ports.push(PortScanner {
                     port,
@@ -58,7 +64,7 @@ pub async fn scan_port_assumption(ip: String) -> Vec<PortScanner> {
             // Process ports in batches of 10
             let ip = ip.clone();
             let tx = tx.clone();
-            let ports: Vec<u16> = chunk.iter().map(|port| port.port).collect();
+            let ports: Vec<u32> = chunk.iter().map(|port| port.port).collect();
 
             // let first_port = ports.first().unwrap();
             // let last_port = ports.last().unwrap();

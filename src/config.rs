@@ -13,13 +13,14 @@ pub(crate) const OPENAI_URL: &str = "https://api.openai.com/v1/chat/completions"
 #[derive(Debug, Clone, Configure)]
 pub enum MemData {
     PortData,
+    PortDataOld,
     OpenKey,
     OpenModel,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PortCSV {
-    pub port: u16,
+    pub port: u32,
     pub description: String,
     pub protocol: String,
     pub version: Option<String>,
@@ -103,9 +104,25 @@ pub async fn init() {
                 return;
             }
         };
-        
         data = serde_json::to_string(&res).unwrap();
     }
-
+    
     MemData::PortData.set(&data);
+
+    let parsed_data = match serde_json::from_str::<Vec<PortCSV>>(&data) {
+        Ok(parsed_data) => parsed_data,
+        Err(e) => {
+            eprintln!("Failed to parse data: {:?}", e);
+            return;
+        }
+    };
+
+    let parsed_port_only = parsed_data
+        .iter()
+        .map(|port| port.port)
+        .collect::<Vec<u32>>();
+
+    let parsed_port_only = serde_json::to_string(&parsed_port_only).unwrap();
+    MemData::PortDataOld.set(&parsed_port_only);
+    
 }
