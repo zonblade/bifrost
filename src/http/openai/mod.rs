@@ -1,5 +1,6 @@
 mod invoke;
 mod banner;
+mod intruder;
 pub mod ports;
 
 use serde::{Deserialize, Serialize};
