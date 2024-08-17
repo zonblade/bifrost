@@ -1,5 +1,6 @@
 use std::net::{SocketAddr, TcpStream};
 use std::time::Duration;
+use crossterm::style::Color;
 use pnet::packet::Packet;
 use tokio::sync::mpsc;
 use tokio::task;
@@ -9,7 +10,7 @@ use pnet::transport::{transport_channel, TransportChannelType, TransportProtocol
 use pnet::util::ipv4_checksum;
 use std::net::{Ipv4Addr, SocketAddrV4};
 
-use crate::log::printlsc;
+use crate::log::{printlg, printlsc};
 use crate::{config, toolkit};
 
 #[derive(Debug, Clone)]
@@ -50,7 +51,7 @@ pub async fn scan_port_assumption(ip: String) -> Vec<PortScanner> {
     let parsed_known_ports = match serde_json::from_str::<Vec<config::PortCSV>>(&known_ports) {
         Ok(parsed_known_ports) => parsed_known_ports,
         Err(e) => {
-            eprintln!("Error parsing known ports: {:?}", e);
+            printlg(format!("Error parsing known ports: {:?}", e), Color::Red);
             return vec![];
         }
     };
@@ -78,7 +79,7 @@ pub async fn scan_port_assumption(ip: String) -> Vec<PortScanner> {
 
         for handle in handles {
             if let Err(e) = handle.await {
-                eprintln!("Error in port scanning task: {:?}", e);
+                printlg(format!("Error scanning ports: {:?}", e), Color::Red);
             }
         }
     });

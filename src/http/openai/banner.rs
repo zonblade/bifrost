@@ -1,4 +1,6 @@
-use crate::config;
+use crossterm::style::Color;
+
+use crate::{config, log::printlg};
 
 use super::{AiMessage, AiRequest, AiResult, ClientAi};
 
@@ -22,6 +24,7 @@ impl ClientAi {
             top_p: 1.0,
             frequency_penalty: 0.61,
             presence_penalty: 1.16,
+            max_tokens: 1_000,
         };
 
         let response = match self
@@ -34,7 +37,7 @@ impl ClientAi {
         {
             Ok(response) => response,
             Err(e) => {
-                println!("Error sending request: {:?}", e);
+                printlg(format!("Error sending request: {:?}", e), Color::Red);
                 return String::from("-");
             }
         };
@@ -42,7 +45,7 @@ impl ClientAi {
         let body = match response.text().await {
             Ok(body) => body,
             Err(e) => {
-                println!("Error reading response: {:?}", e);
+                printlg(format!("Error parsing response: {:?}", e), Color::Red);
                 return String::from("-");
             }
         };
@@ -50,7 +53,7 @@ impl ClientAi {
         let parsed = match serde_json::from_str::<AiResult>(&body) {
             Ok(parsed) => parsed,
             Err(e) => {
-                println!("Error parsing response: {:?}", e);
+                printlg(format!("Error parsing response: {:?}", e), Color::Red);
                 return String::from("-");
             }
         };
@@ -59,7 +62,7 @@ impl ClientAi {
         // if choices more than 1, get index 0
         let choice = match choices.len() {
             0 => {
-                println!("No choices found");
+                printlg(format!("No choices found"), Color::Red);
                 return String::from("-");
             }
             _ => &choices[0],

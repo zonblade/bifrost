@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::config;
 
+#[derive(Debug, Clone)]
 pub struct ClientAi {
     client: reqwest::Client,
     fragment: AiRequest,
@@ -39,20 +40,22 @@ note about tools:
                 temperature: 0.641123421,
                 top_p: 0.698272817,
                 frequency_penalty: 0.00,
-                presence_penalty: 0.00
+                presence_penalty: 0.00,
+                max_tokens: 10238,
             },
         }
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AiRequest {
     model: &'static str,
     messages: Vec<AiMessage>,
     temperature: f32,
     top_p: f32,
     presence_penalty: f32,
-    frequency_penalty: f32
+    frequency_penalty: f32,
+    max_tokens: i32
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

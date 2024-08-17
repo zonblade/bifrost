@@ -1,7 +1,7 @@
+use crossterm::style::Color;
+
 use crate::{
-    config,
-    http::openai::{AiMessage, AiResult},
-    toolkit::prompter::assumption::command_initiate,
+    config, http::openai::{AiMessage, AiResult}, log::printlg, toolkit::prompter::assumption::command_initiate
 };
 
 use super::ClientAi;
@@ -28,20 +28,20 @@ impl ClientAi {
             .await {
             Ok(response) => response,
             Err(e) => {
-                println!("Error sending request: {:?}", e);
+                printlg(format!("Error sending request: {:?}", e), Color::Red);
                 return Err(1);
             }
         };
 
         if !response.status().is_success() {
-            println!("Error response: {:?}", response.status());
+            printlg(format!("Error response: {:?}", response), Color::Red);
             return Err(1);
         }
 
         let body = match response.text().await {
             Ok(body) => body,
             Err(e) => {
-                println!("Error reading response: {:?}", e);
+                printlg(format!("Error parsing response: {:?}", e), Color::Red);
                 return Err(1);
             }
         };
@@ -49,7 +49,7 @@ impl ClientAi {
         let parsed = match serde_json::from_str::<AiResult>(&body) {
             Ok(parsed) => parsed,
             Err(e) => {
-                println!("Error parsing response: {:?}", e);
+                printlg(format!("Error parsing response: {:?}", e), Color::Red);
                 return Err(2);
             }
         };
@@ -58,7 +58,7 @@ impl ClientAi {
         // if choices more than 1, get index 0
         let choice = match choices.len() {
             0 => {
-                println!("No choices found");
+                printlg(format!("No choices found"), Color::Red);
                 return Err(3);
             }
             _ => &choices[0],

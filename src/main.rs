@@ -4,9 +4,10 @@ mod log;
 mod toolkit;
 
 use config::PortCSV;
+use crossterm::style::Color;
 use http::openai::ClientAi;
 use log::printlg;
-use toolkit::portscan::sweeper::PortScanner;
+use toolkit::{commander::terminal_session, portscan::sweeper::PortScanner};
 
 #[tokio::main]
 async fn main() {
@@ -14,100 +15,138 @@ async fn main() {
     let ip = match args.get(1) {
         Some(ip) => ip.clone(),
         None => {
-            printlg("Please provide an IP address".to_string());
+            printlg("Please provide an IP address".to_string(), Color::Red);
             return;
         }
     };
+
     config::init().await;
-
-    printlg("start scanning for open ports".to_string());
+    printlg("start scanning for open ports".to_string(), Color::White);
     let mut first_load = true;
-    let mut result: Vec<PortScanner> = vec![];
     let mut feedback: String = String::new();
+    let mut client_port = ClientAi::new();
+    let mut fingerprint: Vec<PortScanner> = vec![];
+    let mut cai_port = ClientAi::new();
+    let mut result: Vec<PortScanner> = vec![];
+    let port_scan_limit = 10;
+    let mut port_scan_count = 0;
+    let finger_print_limit = 10;
+    let mut finger_print_count = 0;
+
     loop {
-        if !first_load {
-            let known_ports = config::MemData::PortDataOld.get_str();
-            let mut parsed_ports = match serde_json::from_str::<Vec<u32>>(&known_ports) {
-                Ok(result) => result,
-                Err(e) => {
-                    eprintln!("Failed to parse result: {:?}", e);
-                    return;
-                }
-            };
-
-            printlg("retriving new port list...".to_string());
-            let format_feedback = format!("port before: {}, with feedback: {}",known_ports, &feedback);
-            let new_port = ClientAi::new()
-                .port_suggestion_re_opt(String::from(&format_feedback))
-                .await;
-
-            let res = match serde_json::from_str::<Vec<PortCSV>>(&new_port) {
-                Ok(result) => result,
-                Err(e) => {
-                    eprintln!("Failed to parse result: {:?}", e);
-                    return;
-                }
-            };
-            
-            let port_res_only = res.iter().map(|port| port.port).collect::<Vec<u32>>();
-            // merge to parsed_ports
-            parsed_ports.extend(port_res_only);
-            let parsed_ports = serde_json::to_string(&parsed_ports).unwrap();
-
-            printlg("retriving done, scanning again...".to_string());
-            let new_data = serde_json::to_string(&res).unwrap();
-            config::MemData::PortData.set(&new_data);
-            config::MemData::PortDataOld.set(&parsed_ports);
+        if finger_print_count >= finger_print_limit {
+            printlg(
+                "fingerprint limit reached, continue with just as it is.".to_string(),
+                Color::Magenta,
+            );
+            break;
         }
 
-        first_load = false;
-        result = toolkit::portscan::sweeper::scan_port_assumption(ip.clone()).await;
+        loop {
+            if port_scan_count >= port_scan_limit {
+                printlg(
+                    "port scan limit reached, continue with just as it is.".to_string(),
+                    Color::Magenta,
+                );
+                break;
+            }
+            port_scan_count += 1;
+            if !first_load {
+                toolkit::portscan::port_loader::loader(&mut client_port, feedback.clone()).await;
+            }
 
-        feedback = format!("found: {} ports open", &result.len());
-        printlg(String::from(&feedback));
+            first_load = false;
 
-        if result.is_empty() {
-            printlg("no open port found, aborting".to_string());
-            continue;
+            result = toolkit::portscan::sweeper::scan_port_assumption(ip.clone()).await;
+            feedback = format!("found: {} ports open", &result.len());
+
+            if result.is_empty() {
+                printlg("no open port found".to_string(), Color::Red);
+                continue;
+            }
+            break;
         }
-        printlg("initiating sequential attack on opened port\n".to_string());
-
-        let mut cai = ClientAi::new();
 
         for port in result.clone() {
-            let banner = toolkit::portscan::banner::grab_banner(&ip, port.port);
-            let banner = match banner {
-                Ok(banner) => banner,
-                Err(e) => {
-                    eprintln!("Error grabbing banner: {:?}", e);
+            if port.proto.is_none() {
+                continue;
+            }
+
+            let port = PortCSV {
+                port: port.port,
+                description: port.desc.unwrap(),
+                protocol: port.proto.unwrap(),
+                version: None,
+            };
+
+            let mut banner = String::new();
+            match port.protocol.as_str() {
+                protocol if protocol == "TCP" => {
+                    let res = toolkit::portscan::banner::tcp_banner(&ip, port.port);
+                    banner = match res {
+                        Ok(banner) => banner,
+                        Err(e) => {
+                            printlg(
+                                format!(
+                                    "{}:{:?} |TCP| Error grabbing banner: {:?}",
+                                    &ip, port.port, e
+                                ),
+                                Color::Red,
+                            );
+                            continue;
+                        }
+                    };
+                }
+                protocol if protocol == "UDP" => {
+                    let res = toolkit::portscan::banner::udp_banner(&ip, port.port);
+                    banner = match res {
+                        Ok(banner) => banner,
+                        Err(e) => {
+                            printlg(
+                                format!(
+                                    "{}:{:?} |UDP| Error grabbing banner: {:?}",
+                                    &ip, port.port, e
+                                ),
+                                Color::Red,
+                            );
+                            continue;
+                        }
+                    };
+                }
+                _ => {
+                    printlg("Unknown protocol".to_string(), Color::Red);
                     continue;
                 }
+            }
+
+            let parsed_banner = cai_port.banner_parse(banner).await;
+
+            let new_data = PortScanner {
+                port: port.port,
+                desc: Some(port.description),
+                proto: Some(port.protocol),
+                open: true,
+                head: Some(parsed_banner),
             };
 
-            let parsed_banner = cai.banner_parse(banner).await;
+            fingerprint.push(new_data);
+        }
 
-            let desc = match port.desc {
-                Some(desc) => desc,
-                None => String::from("-"),
-            };
-
-            printlg(format!(
-                "initiating attack \n\t-to port : {}\n\t-tech : {}\n\t-server : {}",
-                port.port, desc, parsed_banner
-            ));
-
-            let res = cai.invoke(port.port as i32, desc, parsed_banner).await;
-            let res = match res {
-                Ok(res) => res.replace("<ADDR>", &ip),
-                Err(e) => {
-                    eprintln!("Error invoking AI: {:?}", e);
-                    return;
-                }
-            };
-
-            printlg(format!("res: {:?}", res));
+        if fingerprint.is_empty() {
+            finger_print_count += 1;
+            printlg("no fingerprint found, retry...".to_string(), Color::Red);
+            continue;
         }
 
         break;
     }
+    println!("");
+
+    printlg(format!("fingerprint: {:#?}", fingerprint), Color::Cyan);
+
+    for port in fingerprint {
+        let _ = terminal_session(ip.clone(), port).await;
+    }
+
+    printlg("done".to_string(), Color::Green);
 }

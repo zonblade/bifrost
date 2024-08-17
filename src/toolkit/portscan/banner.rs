@@ -1,8 +1,8 @@
-use std::net::{TcpStream, SocketAddr};
-use std::io::{self, Write, Read};
+use std::io::{self, Read, Write};
+use std::net::{SocketAddr, TcpStream, UdpSocket};
 use std::time::Duration;
 
-pub fn grab_banner(ip: &str, port: u32) -> io::Result<String> {
+pub fn tcp_banner(ip: &str, port: u32) -> io::Result<String> {
     let address = format!("{}:{}", ip, port);
     let socket_addr: SocketAddr = address.parse().expect("Invalid address");
 
@@ -17,4 +17,25 @@ pub fn grab_banner(ip: &str, port: u32) -> io::Result<String> {
     let bytes_read = stream.read(&mut buffer)?;
 
     Ok(String::from_utf8_lossy(&buffer[..bytes_read]).to_string())
+}
+
+
+pub fn udp_banner(ip: &str, port: u32) -> io::Result<String> {
+    let address = format!("{}:{}", ip, port);
+    let socket_addr: SocketAddr = address.parse().expect("Invalid address");
+
+    let socket = UdpSocket::bind("0.0.0.0:0")?;
+    socket.set_read_timeout(Some(Duration::new(5, 0)))?;
+    socket.set_write_timeout(Some(Duration::new(5, 0)))?;
+    socket.connect(socket_addr)?;
+    let mut buffer = [0; 1024];
+    
+    match socket.recv(&mut buffer) {
+        Ok(bytes_read) => {
+            Ok(String::from_utf8_lossy(&buffer[..bytes_read]).to_string())
+        }
+        Err(e) => {
+            Err(e)
+        }
+    }
 }

@@ -1,4 +1,6 @@
-use crate::{config, http::http_parse};
+use crossterm::style::Color;
+
+use crate::{config, http::http_parse, log::printlg};
 
 use super::{AiMessage, AiRequest, AiResult, ClientAi};
 
@@ -19,6 +21,7 @@ impl ClientAi {
             top_p: 0.13,
             frequency_penalty: 0.41,
             presence_penalty: 0.66,
+            max_tokens: 10826,
         };
 
         let response = match self
@@ -31,7 +34,7 @@ impl ClientAi {
         {
             Ok(response) => response,
             Err(e) => {
-                println!("Error sending request: {:?}", e);
+                printlg(format!("Error sending request: {:?}", e), Color::Red);
                 return String::from("-");
             }
         };
@@ -55,9 +58,8 @@ impl ClientAi {
             top_p: 0.13,
             frequency_penalty: 0.41,
             presence_penalty: 0.66,
+            max_tokens: 10824,
         };
-
-        println!("req: {:?}", req);
 
         let response = match self
             .client
@@ -69,7 +71,7 @@ impl ClientAi {
         {
             Ok(response) => response,
             Err(e) => {
-                println!("Error sending request: {:?}", e);
+                printlg(format!("Error sending request: {:?}", e), Color::Red);
                 return String::from("-");
             }
         };
@@ -80,10 +82,11 @@ impl ClientAi {
 
 fn query() -> String {
     r#"
-list of common tcp, udp, database, file, server port. 
-retrive at least 2 port each category (use real protocol analogy). 
+list of common tcp, udp, database, file, server port, etc.
+retrive at least 2-10 port each category (use real protocol analogy). 
 list only, json list formatted {protocol, port, description}
 exclude basic http [80,443]
+exclude DNS port [53]
 
 note for result: minified array json plain text without formatting
 make sure array closing are correct
@@ -99,6 +102,7 @@ do not use port that already listed below:
 {}
 
 find other common port possibilities based on CVE, NIST, or other sources.
+IMPORTANT TO REMOVE 80, 443, 53 FROM RESULT
 {}
     "#,
     "list only, json list formatted {protocol, port, description}", 

@@ -5,7 +5,7 @@ use crossterm::{
 use std::io::stdout;
 use std::io::Write;
 
-pub fn printlg(text: String) {
+pub fn printlg(text: String, color: Color) {
     let mut stdout = stdout();
 
     execute!(
@@ -14,7 +14,7 @@ pub fn printlg(text: String) {
         Print("[OPT]"),
         ResetColor,
         Print(" "),
-        SetForegroundColor(Color::White),
+        SetForegroundColor(color),
         Print(text),
         Print("\n"),
         ResetColor
