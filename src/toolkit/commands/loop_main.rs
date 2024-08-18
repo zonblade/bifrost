@@ -83,30 +83,81 @@ pub async fn terminal_thread(
         }
     });
 
+    let mut command_typed = false;
+    let mut command_wait = false;
+    let command_wait_keyword: [&str; 10] = [
+        "update",
+        "upgrade",
+        "install",
+        "remove",
+        "uninstall",
+        "purge",
+        "autoremove",
+        "dist-upgrade",
+        "full-upgrade",
+        "clean",
+    ];
     loop {
-        // Add a small delay to allow output_task and error_task to update previous_output
-        sleep(Duration::from_millis(100)).await;
-        let prev_output = previous_output.lock().await;
-        if !prev_output.is_empty() {
-            println!("\n{}", *prev_output);
+        // Check if there's output to display
+        let mut opt_before = String::new();
+        if command_wait {
+            println!("Waiting for progressed command to finish, can take few minutes...");
         }
-        drop(prev_output); // Release the lock
+        loop {
+            if !command_typed {
+                break;
+            }
+            if command_wait {
+                sleep(Duration::from_secs(10)).await;
+            } else {
+                sleep(Duration::from_millis(200)).await;
+            }
+            let mut prev_output = previous_output.lock().await;
+            opt_before.push_str(&*prev_output);
+            
+            if !prev_output.is_empty() {
+                prev_output.clear();
+            } else {
+                command_wait = false;
+                command_typed = false;
+            }
+        }
 
-        println!("$:\r");
+        // Allow user to input commands without being interrupted
+        println!("result: \n{} \n$:", opt_before);
         line.clear();
-        if reader.read_line(&mut line).await.unwrap_or(0) == 0 {
-            break;
-        }
 
-        let command_input = line.trim();
-        if command_input.eq_ignore_ascii_case("end") {
-            println!("Exit command received. Exiting terminal thread.");
-            break;
-        }
+        let read_result = reader.read_line(&mut line).await;
+        match read_result {
+            Ok(0) => break, // End of input (Ctrl+D or similar)
+            Ok(_) => {
+                let command_input = line.trim();
+                if command_input.eq_ignore_ascii_case("end") {
+                    println!("Exit command received. Exiting terminal thread.");
+                    break;
+                }
 
-        if let Err(e) = tx.send(format!("{}\n", command_input)).await {
-            eprintln!("[!!!] Failed to send command to subprocess: {}", e);
-            break;
+                if !command_input.is_empty() {
+                    command_typed = true;
+
+                    // Check if the command requires waiting for a keyword
+                    for keyword in command_wait_keyword.iter() {
+                        if command_input.contains(keyword) {
+                            command_wait = true;
+                            break;
+                        }
+                    }
+
+                    if let Err(e) = tx.send(format!("{}\n", command_input)).await {
+                        eprintln!("[!!!] Failed to send command to subprocess: {}", e);
+                        break;
+                    }
+                }
+            }
+            Err(e) => {
+                eprintln!("[!!!] Failed to read user input: {}", e);
+                break;
+            }
         }
     }
 
