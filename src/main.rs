@@ -25,6 +25,14 @@ async fn main() {
         }
     };
 
+    // test ping to google.com to determine if connection is ok
+    let _ = std::process::Command::new("ping")
+        .arg("-c")
+        .arg("1")
+        .arg("google.com")
+        .output()
+        .expect("failed to execute process, aborting");
+
     config::init().await;
     printlg("start scanning for open ports".to_string(), Color::White);
     let mut first_load = true;
