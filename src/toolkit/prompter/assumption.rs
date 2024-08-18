@@ -22,7 +22,6 @@ result:
 
 do next step (until retrive the flag content)
 if command/script does not exist you're allowed to do install/curl command
-always set to non interactive mode
 
 output: PLAIN text command only without any formatting nor quote nor anything, because i want to use for next command
     "#,result)

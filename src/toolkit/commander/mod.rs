@@ -1,13 +1,14 @@
 mod child;
 
-use std::io::{self, BufRead, BufReader, ErrorKind, Write};
-use std::process::{Child, ChildStdin, Command, Stdio};
-use std::sync::mpsc::{self, Receiver, Sender};
-use std::sync::{Arc, Condvar, Mutex};
-use std::thread;
-
 use crossterm::execute;
 use crossterm::style::{Color, Print, ResetColor, SetForegroundColor};
+use std::io::{self, ErrorKind};
+use std::process::{Command, Stdio};
+use std::sync::{Arc, Condvar};
+use tokio::sync::{
+    mpsc::{self, Receiver, Sender},
+    Mutex,
+};
 
 use crate::http::openai::ClientAi;
 use crate::log::printlg;
@@ -18,7 +19,7 @@ pub async fn terminal_session(ip: String, data: PortScanner) -> Result<(), i32> 
     // 0 = init, 1 = feedback, 2 = next command, 3 = exit
     let command_lock = Arc::new((Mutex::new(0), Condvar::new()));
     let command_feedback = Arc::new(Mutex::new("".to_string()));
-    let (tx, rx): (Sender<String>, Receiver<String>) = mpsc::channel();
+    let (tx, mut rx): (Sender<String>, Receiver<String>) = mpsc::channel(100);
     let mut commander = String::new();
     let client = Arc::new(Mutex::new(ClientAi::new()));
 
@@ -26,7 +27,7 @@ pub async fn terminal_session(ip: String, data: PortScanner) -> Result<(), i32> 
         let init_data = data.clone();
         let (lock, cvar) = &*command_lock;
         let state = {
-            let lock = lock.lock().unwrap();
+            let lock = lock.lock().await;
             *lock
         };
 
@@ -35,7 +36,7 @@ pub async fn terminal_session(ip: String, data: PortScanner) -> Result<(), i32> 
                 println!("State 0: Initializing command");
                 let pew_command = client
                     .lock()
-                    .unwrap()
+                    .await
                     .invoke(
                         init_data.port as i32,
                         init_data.desc.unwrap(),
@@ -45,7 +46,7 @@ pub async fn terminal_session(ip: String, data: PortScanner) -> Result<(), i32> 
                 println!("Command: {:?}", pew_command);
                 let mut pew_command = match pew_command {
                     Ok(pew_command) => {
-                        let mut lock = lock.lock().unwrap();
+                        let mut lock = lock.lock().await;
                         *lock = 2;
                         cvar.notify_all();
                         pew_command
@@ -62,16 +63,19 @@ pub async fn terminal_session(ip: String, data: PortScanner) -> Result<(), i32> 
             }
             2 => {
                 println!("State 2: Next command");
-                let feedback = command_feedback.lock().unwrap();
-                let mut pew_command = client
-                    .lock()
-                    .unwrap()
-                    .intruder(String::from(feedback.clone()))
-                    .await;
+                let feedback = {
+                    let feedback_lock = command_feedback.lock().await;
+                    feedback_lock.clone()
+                };
+
+                let mut pew_command = client.lock().await.intruder(feedback).await;
+
                 print!("Command: {:?}", pew_command);
-                let mut lock = lock.lock().unwrap();
-                *lock = 4;
-                cvar.notify_all();
+                {
+                    let mut state_lock = lock.lock().await;
+                    *state_lock = 4;
+                    cvar.notify_all();
+                }
                 pew_command = pew_command.trim().to_string();
                 pew_command = pew_command.replace("sudo", "");
                 commander = pew_command;
@@ -92,13 +96,14 @@ pub async fn terminal_session(ip: String, data: PortScanner) -> Result<(), i32> 
             break;
         }
 
-        let mut parts = initial_command.split_whitespace();
-        let executable = parts.next().unwrap();
+        let parts = initial_command.split_whitespace();
         let args: Vec<&str> = parts.collect();
+        let executable = args.join(" ");
 
-        println!("Executing command: {} with args: {:?}", executable, args);
+        println!("Executing command: {}", executable);
 
-        let mut child = match Command::new(executable)
+        let mut child = match Command::new("sh")
+            .arg("-c")
             .args(&args)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
@@ -107,14 +112,14 @@ pub async fn terminal_session(ip: String, data: PortScanner) -> Result<(), i32> 
         {
             Ok(child) => child,
             Err(e) => {
-                let mut feedback = command_feedback.lock().unwrap();
+                let mut feedback = command_feedback.lock().await;
                 *feedback = match e.kind() {
                     ErrorKind::NotFound => format!("Command not found: {}", executable),
                     ErrorKind::PermissionDenied => format!("Permission denied: {}", executable),
                     _ => format!("Failed to execute command: {}", executable),
                 };
                 // set state
-                let mut lock = lock.lock().unwrap();
+                let mut lock = lock.lock().await;
                 *lock = 2;
                 cvar.notify_all();
                 execute!(
@@ -128,7 +133,7 @@ pub async fn terminal_session(ip: String, data: PortScanner) -> Result<(), i32> 
                 continue;
             }
         };
-        
+
         let stdin = child.stdin.take().expect("Failed to open stdin");
         child::handle_child_loop(
             client.clone(),
@@ -141,9 +146,10 @@ pub async fn terminal_session(ip: String, data: PortScanner) -> Result<(), i32> 
         .await;
 
         // Wait for feedback from the child process
-        if let Ok(feedback) = rx.recv() {
+        if let Some(feedback) = rx.recv().await {
             println!("Feedback from child: {}", feedback);
         }
+        break;
     }
 
     Ok(())

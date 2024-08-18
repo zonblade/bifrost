@@ -3,11 +3,16 @@ mod http;
 mod log;
 mod toolkit;
 
+use std::sync::Arc;
+
 use config::PortCSV;
 use crossterm::style::Color;
+use futures::future::join_all;
 use http::openai::ClientAi;
 use log::printlg;
-use toolkit::{commander::terminal_session, portscan::sweeper::PortScanner};
+use tokio::task;
+use tokio::sync::Mutex;
+use toolkit::{commands::loop_main::terminal_thread, portscan::sweeper::PortScanner};
 
 #[tokio::main]
 async fn main() {
@@ -80,8 +85,9 @@ async fn main() {
             };
 
             let mut banner = String::new();
+
             match port.protocol.as_str() {
-                protocol if protocol == "TCP" => {
+                "TCP" => {
                     let res = toolkit::portscan::banner::tcp_banner(&ip, port.port);
                     banner = match res {
                         Ok(banner) => banner,
@@ -97,7 +103,7 @@ async fn main() {
                         }
                     };
                 }
-                protocol if protocol == "UDP" => {
+                "UDP" => {
                     let res = toolkit::portscan::banner::udp_banner(&ip, port.port);
                     banner = match res {
                         Ok(banner) => banner,
@@ -140,13 +146,27 @@ async fn main() {
 
         break;
     }
-    println!("");
 
     printlg(format!("fingerprint: {:#?}", fingerprint), Color::Cyan);
 
-    for port in fingerprint {
-        let _ = terminal_session(ip.clone(), port).await;
-    }
+    run_sessions(ip, fingerprint).await;
 
     printlg("done".to_string(), Color::Green);
+}
+
+async fn run_sessions(ip: String, fingerprint: Vec<PortScanner>) {
+    let mut tasks = Vec::new();
+    let previous_output = Arc::new(Mutex::new(String::new()));
+
+    for (index, port) in fingerprint.into_iter().enumerate() {
+        let ip_clone = ip.clone();
+        let previous_output_clone = Arc::clone(&previous_output);
+        let task = task::spawn(async move {
+            let _ = terminal_thread(index as i32, ip_clone, port, previous_output_clone).await;
+        });
+        tasks.push(task);
+    }
+
+    // Wait for all tasks to complete
+    let _ = join_all(tasks).await;
 }

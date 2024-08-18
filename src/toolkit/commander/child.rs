@@ -1,14 +1,12 @@
-use std::io::{self, BufRead, BufReader, ErrorKind, Write};
-use std::process::{Child, ChildStdin, Command, Stdio};
-use std::sync::mpsc::{self, Receiver, Sender};
-use std::sync::{Arc, Condvar, Mutex};
-use std::thread;
-
 use crossterm::execute;
 use crossterm::style::{Color, Print, ResetColor, SetForegroundColor};
+use std::io::{self, BufRead, BufReader, Write};
+use std::process::{Child, ChildStdin};
+use std::sync::{Arc, Condvar};
+use tokio::sync::{mpsc::Sender, Mutex};
+use tokio::task;
 
 use crate::http::openai::ClientAi;
-use crate::log::printlg;
 
 pub async fn handle_child_loop(
     client: Arc<Mutex<ClientAi>>,
@@ -36,12 +34,12 @@ pub async fn handle_child_loop(
     // List of keywords indicating completion of installation
     let completion_keywords = ["installation complete", "successfully installed", "done"];
 
-    let stdout_thread = thread::spawn(move || {
+    let stdout_thread = task::spawn(async move {
         let mut collected_output = Vec::new();
         for line in stdout_reader.lines() {
             let line = line.expect("Failed to read line");
             collected_output.push(line.clone());
-            println!("stderr: {}", line); // Debug print
+            println!("stdout: {}", line); // Debug print
             execute!(
                 io::stdout(),
                 SetForegroundColor(Color::Red),
@@ -64,13 +62,13 @@ pub async fn handle_child_loop(
         // Join all collected lines into a single string
         let feedback = collected_output.join("\n");
         {
-            let mut feedback_lock = command_feedback_clone_stdout.lock().unwrap();
+            let mut feedback_lock = command_feedback_clone_stdout.lock().await;
             *feedback_lock = feedback.clone();
             println!("Feedback set to: {}", *feedback_lock); // Debug print
         }
 
-        let (lock, cvar) = &*command_lock_clone_stdout;
-        let mut lock = lock.lock().unwrap();
+        let (lock, cvar): &(Mutex<i32>, Condvar) = &command_lock_clone_stdout;
+        let mut lock = lock.lock().await;
 
         // Check if the command is an installation process
         let install_keywords = ["install", "apt-get", "yum", "brew", "pip", "npm"];
@@ -83,15 +81,13 @@ pub async fn handle_child_loop(
             *lock = 99;
             cvar.notify_all();
         } else {
-            let (lock, cvar) = &*command_lock_clone_stdout;
-            let mut lock = lock.lock().unwrap();
             *lock = 12; // No error, set to next command
             cvar.notify_all();
         }
-        tx_clone_stdout.send(feedback).unwrap();
+        tx_clone_stdout.send(feedback).await.unwrap();
     });
 
-    let stderr_thread = thread::spawn(move || {
+    let stderr_thread = task::spawn(async move {
         let mut collected_output = Vec::new();
         for line in stderr_reader.lines() {
             let line = line.expect("Failed to read line");
@@ -119,35 +115,34 @@ pub async fn handle_child_loop(
         // Join all collected lines into a single string
         let feedback = collected_output.join("\n");
         {
-            let mut feedback_lock = command_feedback_clone_stderr.lock().unwrap();
+            let mut feedback_lock = command_feedback_clone_stderr.lock().await;
             *feedback_lock = feedback.clone();
             println!("Feedback set to: {}", *feedback_lock); // Debug print
         }
 
-        let (lock, cvar) = &*command_lock_clone_stderr;
-        let mut lock = lock.lock().unwrap();
+        let (lock, cvar): &(Mutex<i32>, Condvar) = &command_lock_clone_stderr;
+        let mut lock = lock.lock().await;
         *lock = 12; // No error, set to next command
         cvar.notify_all();
-        tx_clone_stderr.send(feedback).unwrap();
+        tx_clone_stderr.send(feedback).await.unwrap();
     });
 
-    let mut looplock = true;
+    let mut loop_count = 0;
 
     loop {
         // Handle command feedback and state changes
         let (lock, cvar) = &*command_lock;
-        let mut state = lock.lock().unwrap();
+        let mut state = lock.lock().await;
         match *state {
             12 => {
-                looplock = false;
-                let msg = match command_feedback.lock() {
-                    Ok(msg) => match msg.clone().len() {
+                let msg = {
+                    let cflock = command_feedback.lock().await;
+                    match cflock.len() {
                         0 => "empty".to_string(),
-                        _ => msg.clone(),
-                    },
-                    Err(_) => "hm?".to_string(),
+                        _ => cflock.clone(),
+                    }
                 };
-                println!("Sub State 2: Command received, feedback {}", msg);
+                println!("?: {}", msg);
                 // Handle the feedback and continue processing
                 if msg == "empty" {
                     // Handle empty feedback case
@@ -165,24 +160,16 @@ pub async fn handle_child_loop(
             13 => {
                 // exit
                 commander = "exit".to_string();
-                looplock = false;
+                println!("$: {}", commander);
                 *state = 3;
+                break;
             }
-            2 => {
-                // initial
-                commander = "get ok".to_string();
-                looplock = false;
-                *state = 17;
-            }
+            
             _ => {
+                loop_count += 1;
                 continue;
             }
         }
-
-        if looplock {
-            continue;
-        }
-        println!("\n\nCurrent sub state: {}", *state);
 
         println!("Commander: {}", commander);
 
@@ -203,6 +190,8 @@ pub async fn handle_child_loop(
         writeln!(stdin, "{}", user_command).expect("Failed to write to stdin");
     }
 
-    stdout_thread.join().expect("Failed to join stdout thread");
-    stderr_thread.join().expect("Failed to join stderr thread");
+    println!("Loop count: {}", loop_count);
+
+    stdout_thread.await.expect("Failed to await stdout thread");
+    stderr_thread.await.expect("Failed to await stderr thread");
 }

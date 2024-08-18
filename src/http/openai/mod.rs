@@ -38,10 +38,10 @@ note about tools:
                         ),
                     }
                 ],
-                temperature: 0.641123421,
-                top_p: 0.698272817,
-                frequency_penalty: 0.00,
-                presence_penalty: 0.00,
+                temperature: 0.6,
+                top_p: 1.00,
+                frequency_penalty: 1.00,
+                presence_penalty: 1.00,
                 max_tokens: 10238,
             },
         }
