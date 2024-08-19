@@ -79,6 +79,8 @@ async fn main() {
             }
             break;
         }
+        println!("");
+        printlg("scanning for fingerprint, may take a while...".to_string(), Color::Green);
 
         for port in result.clone() {
             if port.proto.is_none() {
@@ -128,8 +130,7 @@ async fn main() {
                     };
                 }
                 _ => {
-                    printlg("Unknown protocol".to_string(), Color::Red);
-                    continue;
+                    printlg("Unknown protocol, might be possible to explore".to_string(), Color::Red);
                 }
             }
 
@@ -160,7 +161,10 @@ async fn main() {
         break;
     }
 
-    printlg(format!("fingerprint: {:#?}", fingerprint), Color::Cyan);
+    if !fingerprint.is_empty() {
+        printlg("fingerprint found...".to_string(), Color::Green);
+        printlg("running attack session...".to_string(), Color::Green);
+    }
 
     run_sessions(ip, fingerprint).await;
 

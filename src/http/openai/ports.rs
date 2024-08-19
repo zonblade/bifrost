@@ -2,7 +2,7 @@ use crossterm::style::Color;
 
 use crate::{config, http::http_parse, log::printlg};
 
-use super::{AiMessage, AiRequest, AiResult, ClientAi};
+use super::{AiMessage, AiRequest, ClientAi};
 
 impl ClientAi {
     pub async fn port_suggestion(&mut self) -> String {

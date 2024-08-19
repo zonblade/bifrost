@@ -22,7 +22,7 @@ impl ClientAi {
             role: String::from("user"),
             content: String::from(r#"
 if any username/password need to be provided, 
-please assume to use anonymous or default username/password first.
+please use anonymous or default username/password first.
 then you can assume. if the flag is found download the flag and stop the intrusion, 
 type command "end" to stop the intrusion program.
             "#),

@@ -1,14 +1,8 @@
 use std::net::{SocketAddr, TcpStream};
 use std::time::Duration;
 use crossterm::style::Color;
-use pnet::packet::Packet;
 use tokio::sync::mpsc;
 use tokio::task;
-use pnet::packet::tcp::{MutableTcpPacket, TcpFlags};
-use pnet::packet::ip::IpNextHeaderProtocols;
-use pnet::transport::{transport_channel, TransportChannelType, TransportProtocol, ipv4_packet_iter};
-use pnet::util::ipv4_checksum;
-use std::net::{Ipv4Addr, SocketAddrV4};
 
 use crate::log::{printlg, printlsc};
 use crate::{config, toolkit};
@@ -30,7 +24,7 @@ pub async fn scan_ports(ip: &str, ports: &[u32]) -> Vec<PortScanner> {
         printlsc(format!("Scanning port {}\r", port));
         let address = format!("{}:{}", ip, port);
         let socket_addr: SocketAddr = address.parse().expect("Invalid address");
-        match TcpStream::connect_timeout(&socket_addr, Duration::from_millis(500)) {
+        match TcpStream::connect_timeout(&socket_addr, Duration::from_millis(2000)) {
             Ok(_) => {
                 open_ports.push(PortScanner {
                     port,

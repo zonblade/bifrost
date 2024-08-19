@@ -1,6 +1,5 @@
 use crossterm::style::Color;
 use openai::AiResult;
-use regex::Regex;
 
 use crate::log::printlg;
 

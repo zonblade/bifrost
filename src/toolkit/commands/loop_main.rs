@@ -16,9 +16,9 @@ pub async fn terminal_thread(
     data: PortScanner,
     previous_output: Arc<Mutex<String>>,
 ) -> Result<(), i32> {
-    println!("[TTS:{}] Starting terminal thread", sessnum);
-    println!("[TTS:{}] IP: {}", sessnum, ip);
-    println!("[TTS:{}] Data: {:?}", sessnum, data);
+    println!("{}|$: Starting terminal thread", sessnum);
+    println!("{}|$: IP: {}", sessnum, ip);
+    println!("{}|$: Data: {:?}", sessnum, data);
 
     let stdin = io::stdin();
     let mut reader = BufReader::new(stdin);
@@ -34,7 +34,7 @@ pub async fn terminal_thread(
     {
         Ok(child) => child,
         Err(e) => {
-            println!("[!!!] Failed to start subprocess: {}", e);
+            println!("$: Failed to start subprocess: {}", e);
             return Err(1);
         }
     };
@@ -53,16 +53,17 @@ pub async fn terminal_thread(
         let mut reader = BufReader::new(child_stdout);
         let mut line = String::new();
 
+        eprintln!("$: STDOUT task started.");
         while reader.read_line(&mut line).await.unwrap_or(0) > 0 {
             {
                 let mut prev_output = previous_output_clone.lock().await;
                 prev_output.push_str(&line);
             }
-            eprintln!("[DEBUG] Captured stdout: {}", line); // Debugging line to verify output capture
+            eprintln!("$: Captured stdout: {}", line); // Debugging line to verify output capture
             line.clear();
         }
         stdout_notify.notify_one(); // Notify when stdout reading is done
-        eprintln!("[DEBUG] STDOUT task finished.");
+        eprintln!("$: STDOUT task finished.");
     });
 
     let previous_output_clone = Arc::clone(&previous_output);
@@ -71,26 +72,27 @@ pub async fn terminal_thread(
         let mut reader = BufReader::new(child_stderr);
         let mut line = String::new();
 
+        eprintln!("$: STDERR task started.");
         while reader.read_line(&mut line).await.unwrap_or(0) > 0 {
             {
                 let mut prev_output = previous_output_clone.lock().await;
                 prev_output.push_str(&line);
             }
-            // eprintln!("[DEBUG] Captured stderr: {}", line); // Debugging line to verify output capture
+            eprintln!("$: Captured stderr: {}", line); // Debugging line to verify output capture
             line.clear();
         }
         stderr_notify.notify_one(); // Notify when stderr reading is done
-        eprintln!("[DEBUG] STDERR task finished.");
+        eprintln!("$: STDERR task finished.");
     });
 
     let input_task = tokio::spawn(async move {
         while let Some(command) = rx.recv().await {
             if let Err(e) = child_stdin.write_all(command.as_bytes()).await {
-                println!("[!!!] Failed to write to subprocess stdin: {}", e);
+                println!("$: Failed to write to subprocess stdin: {}", e);
                 break;
             }
             if let Err(e) = child_stdin.flush().await {
-                println!("[!!!] Failed to flush subprocess stdin: {}", e);
+                println!("$: Failed to flush subprocess stdin: {}", e);
                 break;
             }
         }
@@ -103,7 +105,7 @@ pub async fn terminal_thread(
     let mut invoke_command = match invoke_command {
         Ok(invoke_command) => invoke_command,
         Err(e) => {
-            println!("Failed to invoke command: {:?}", e);
+            println!("$: Failed to invoke command: {:?}", e);
             return Err(1);
         }
     };
@@ -129,7 +131,7 @@ pub async fn terminal_thread(
 
     loop {
         if commands == "end" {
-            println!("[TTS:{}] Exit command received. Exiting terminal thread.", sessnum);
+            println!("{}|$: Exit command received. Exiting terminal thread.", sessnum);
             break;
         }
 
@@ -142,11 +144,11 @@ pub async fn terminal_thread(
             commands = command_gen;
         }
         if commands.is_empty() {
-            println!("[TTS:{}] No command generated, exiting.", sessnum);
+            println!("{}|$: No command generated, exiting.", sessnum);
             break;
         }
 
-        println!("[TTS:{}] Command: {}", sessnum, commands);
+        println!("{}|$: Command: {}", sessnum, commands);
 
         let command_input = commands.trim();
         if command_input.eq_ignore_ascii_case("end") {
@@ -156,7 +158,7 @@ pub async fn terminal_thread(
 
         if command_input.is_empty() {
             println!(
-                "[TTS:{}] Empty command, continuing to next iteration.",
+                "{}|$: Empty command, continuing to next iteration.",
                 sessnum
             );
             continue;
@@ -166,16 +168,16 @@ pub async fn terminal_thread(
 
         for keyword in command_wait_keywords.iter() {
             if command_input.contains(keyword) {
-                println!("Executing long-running command...");
+                println!("$: Executing long-running command...");
                 let result =
                     process_command(command_input, &tx, &notify, Arc::clone(&previous_output))
                         .await;
                 match result {
                     Ok(output) => {
-                        eprintln!("[TTS:{}] Command output: {}", sessnum, output);
+                        eprintln!("{}|$: Command output: {}", sessnum, output);
                         opt_before = output; // Use this output for the next command generation
                     }
-                    Err(e) => println!("Error during command execution: {:?}", e),
+                    Err(e) => println!("$: Error during command execution: {:?}", e),
                 }
                 command_executed = true;
                 break;
@@ -189,41 +191,41 @@ pub async fn terminal_thread(
                 process_command(command_input, &tx, &notify, Arc::clone(&previous_output)).await;
             match result {
                 Ok(output) => {
-                    eprintln!("[TTS:{}] Command output: {}", sessnum, output);
+                    eprintln!("{}|$: Command output: {}", sessnum, output);
                     opt_before = output; // Use this output for the next command generation
                 }
-                Err(e) => println!("Error during command execution: {:?}", e),
+                Err(e) => println!("$: Error during command execution: {:?}", e),
             }
         }
 
         // Ensure the loop waits for the current command to fully process before continuing
         println!(
-            "[TTS:{}] Finish executing either with error or success.",
+            "{}|$: Finish executing either with error or success.",
             sessnum
         );
         if (timeout(Duration::from_secs(5), notify.notified()).await).is_err() {
-            println!("[TTS:{}] No notification received. Timeout.", sessnum);
+            println!("{}|$: No notification received. Timeout.", sessnum);
         }
-        println!("[TTS:{}] Moving to the next command.", sessnum);
+        println!("{}|$: Moving to the next command.", sessnum);
     }
 
     drop(tx);
 
     if let Err(e) = child.wait().await {
-        eprintln!("[TTS:{}] Failed to wait on child process: {}", sessnum, e);
+        eprintln!("{}|$: Failed to wait on child process: {}", sessnum, e);
     }
 
     if let Err(e) = output_task.await {
-        eprintln!("[!!!] {:?}", e);
+        eprintln!("$: {:?}", e);
     }
     if let Err(e) = error_task.await {
-        eprintln!("[!!!] {:?}", e);
+        eprintln!("$: {:?}", e);
     }
     if let Err(e) = input_task.await {
-        eprintln!("[!!!] {:?}", e);
+        eprintln!("$: {:?}", e);
     }
 
-    println!("[TTS:{}] Command session finished.", sessnum);
+    println!("{}|$: Command session finished.", sessnum);
 
     Ok(())
 }
@@ -249,15 +251,16 @@ async fn process_command(
         {
             let mut prev_output = previous_output.lock().await;
             if !prev_output.is_empty() {
-                accumulated_output.push_str(&prev_output);
+                accumulated_output.push_str(&*prev_output);
                 prev_output.clear();
                 got_output = true;
+                println!("$: Got output: {}", accumulated_output);
             }
         }
 
         if got_output && remaining_time < Duration::from_secs(10) {
-            remaining_time += Duration::from_secs(1); // Extend by 1 second if less than 10 seconds left
-            println!("Extending timeout by 1 second. New timeout: {:?}", remaining_time);
+            remaining_time += Duration::from_secs(2); // Extend by 2 second if less than 10 seconds left
+            println!("$: Extending timeout by 1 second. New timeout: {:?}", remaining_time);
         }
 
         let notify_fut = notify.notified();
@@ -268,13 +271,13 @@ async fn process_command(
         remaining_time = remaining_time.saturating_sub(output_timeout);
 
         if remaining_time.is_zero() {
-            println!("Command execution timeout. Assuming completion.");
+            println!("$: Command execution timeout. Assuming completion.");
             break;
         }
     }
 
     // Add a small delay to ensure all output has been processed
-    sleep(Duration::from_millis(500)).await;
+    sleep(Duration::from_millis(800)).await;
 
     // Final check to capture any remaining output
     {

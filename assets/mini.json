@@ -1,67 +1,97 @@
 [
     {
-        "protocol": "HTTP",
+      "protocol": "TCP",
+      "port": 445,
+      "description": "Microsoft-DS"
+    },
+    {
+      "protocol": "TCP",
+      "port": 137,
+      "description": "NETBIOS Name Service"
+    },
+    {
+      "protocol": "TCP",
+      "port": 138,
+      "description": "NETBIOS Datagram Service"
+    },
+    {
+      "protocol": "TCP",
+      "port": 139,
+      "description": "NETBIOS Session Service"
+    },
+    {
+      "protocol": "TCP",
+      "port": 1433,
+      "description": "Microsoft-SQL-Server"
+    },
+    {
+      "protocol": "TCP",
+      "port": 1434,
+      "description": "Microsoft-SQL-Monitor"
+    },
+    {
+        "protocol": "TCP",
         "port": 80,
-        "description": "Web Site Structure Discovery, Apache, Cookie Manipulation, Insecure Direct Object Reference (IDOR), SQL Injection, Arbitrary File Upload, PHP"
+        "description": "HTTP - Web Site Structure Discovery, Apache, Cookie Manipulation, Insecure Direct Object Reference (IDOR), SQL Injection, Arbitrary File Upload, PHP"
     },
     {
-        "protocol": "HTTPS",
+        "protocol": "TCP",
         "port": 443,
-        "description": "Web Site Structure Discovery, Apache, Cookie Manipulation, Insecure Direct Object Reference (IDOR), SQL Injection, Arbitrary File Upload, PHP"
+        "description": "HTTPS - Web Site Structure Discovery, Apache, Cookie Manipulation, Insecure Direct Object Reference (IDOR), SQL Injection, Arbitrary File Upload, PHP"
     },
     {
-        "protocol": "FTP",
+        "protocol": "TCP",
         "port": 21,
         "description": "FTP"
     },
     {
-        "protocol": "Telnet",
+        "protocol": "TCP",
         "port": 23,
-        "description": "Clear Text Credentials"
+        "description": "Telnet - Clear Text Credentials"
     },
     {
-        "protocol": "WinRM HTTP",
+        "protocol": "TCP",
         "port": 5985,
-        "description": "WinRM"
+        "description": "WinRM HTTP"
     },
     {
-        "protocol": "WinRM HTTPS",
+        "protocol": "TCP",
         "port": 5986,
-        "description": "WinRM"
+        "description": "WinRM HTTPS"
     },
     {
-        "protocol": "MySQL",
+        "protocol": "TCP",
         "port": 3306,
         "description": "MySQL, XAMPP"
     },
     {
-        "protocol": "SMB",
+        "protocol": "TCP",
         "port": 445,
         "description": "SMB"
     },
     {
-        "protocol": "MSSQL",
+        "protocol": "TCP",
         "port": 1433,
-        "description": "SQL"
+        "description": "MSSQL"
     },
     {
-        "protocol": "PostgreSQL",
+        "protocol": "TCP",
         "port": 5432,
         "description": "PostgreSQL"
     },
     {
-        "protocol": "MongoDB",
+        "protocol": "TCP",
         "port": 27017,
         "description": "MongoDB"
     },
     {
-        "protocol": "SSH",
+        "protocol": "TCP",
         "port": 22,
-        "description": "Default Credentials"
+        "description": "SSH - Default Credentials"
     },
     {
-        "protocol": "RDP",
+        "protocol": "TCP",
         "port": 3389,
-        "description": "Default Credentials"
+        "description": "RDP - Default Credentials"
     }
 ]
