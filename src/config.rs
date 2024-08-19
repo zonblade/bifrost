@@ -74,7 +74,7 @@ pub async fn init() {
 
     // initiate model to get common ports
 
-    let file_path = "./assets/basic.json";
+    let file_path = "./assets/mini.json";
     let mut file = match File::open(file_path) {
         Ok(file) => file,
         Err(e) => {

@@ -21,6 +21,8 @@ pub fn printlg(text: String, color: Color) {
         ResetColor
     )
     .unwrap();
+
+    stdout.flush().unwrap();
 }
 
 pub fn printopt(stdout: &mut Stdout,text: String) {

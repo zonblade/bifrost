@@ -16,7 +16,7 @@ pub struct PortScan {
 
 pub async fn loader(client: &mut ClientAi, feedback: String) {
     let known_ports = config::MemData::PortDataOld.get_str();
-    let mut parsed_ports = match serde_json::from_str::<Vec<u32>>(&known_ports) {
+    let mut parsed_ports = match serde_json::from_str::<Vec<u32>>(known_ports) {
         Ok(result) => result,
         Err(e) => {
             printlg(format!("Failed to parse result: {:?}", e), Color::Red);

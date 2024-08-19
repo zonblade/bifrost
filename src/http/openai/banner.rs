@@ -79,7 +79,8 @@ result :
 {}
 write detected technology/os/tools based on result above,
 if detected any version/detail please include it to the list.
-return list only separated by comma
+return list only separated by comma,
+if corrupted or not detected, return 'unknown'
 "#,
         banner
     )

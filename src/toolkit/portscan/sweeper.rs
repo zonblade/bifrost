@@ -30,7 +30,7 @@ pub async fn scan_ports(ip: &str, ports: &[u32]) -> Vec<PortScanner> {
         printlsc(format!("Scanning port {}\r", port));
         let address = format!("{}:{}", ip, port);
         let socket_addr: SocketAddr = address.parse().expect("Invalid address");
-        match TcpStream::connect_timeout(&socket_addr, Duration::from_millis(70)) {
+        match TcpStream::connect_timeout(&socket_addr, Duration::from_millis(500)) {
             Ok(_) => {
                 open_ports.push(PortScanner {
                     port,
@@ -61,7 +61,7 @@ pub async fn scan_port_assumption(ip: String) -> Vec<PortScanner> {
 
     tokio::spawn(async move {
         let mut handles = vec![];
-        for chunk in parsed_known_ports.chunks(200) {
+        for chunk in parsed_known_ports.chunks(50) {
             // Process ports in batches of 10
             let ip = ip.clone();
             let tx = tx.clone();

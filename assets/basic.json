@@ -21,18 +21,8 @@
   },
   {
     "protocol": "TCP",
-    "port": 8080,
-    "description": "HTTP Alternate (http-alt)"
-  },
-  {
-    "protocol": "TCP",
-    "port": 80,
-    "description": "HTTP"
-  },
-  {
-    "protocol": "TCP",
-    "port": 443,
-    "description": "HTTPS"
+    "port": 22,
+    "description": "SSH"
   },
   {
     "protocol": "TCP",
@@ -63,11 +53,6 @@
     "protocol": "TCP",
     "port": 5432,
     "description": "PostgreSQL"
-  },
-  {
-    "protocol": "TCP",
-    "port": 2222,
-    "description": "Custom"
   },
   {
     "protocol": "TCP",
@@ -131,11 +116,6 @@
   },
   {
     "protocol": "TCP",
-    "port": 8000,
-    "description": "HTTP Development Server"
-  },
-  {
-    "protocol": "TCP",
     "port": 8888,
     "description": "HTTP Proxy"
   },
@@ -153,16 +133,6 @@
     "protocol": "TCP",
     "port": 25,
     "description": "SMTP"
-  },
-  {
-    "protocol": "TCP",
-    "port": 53,
-    "description": "DNS"
-  },
-  {
-    "protocol": "UDP",
-    "port": 53,
-    "description": "DNS"
   },
   {
     "protocol": "TCP",
@@ -210,6 +180,11 @@
     "description": "TFTP"
   },
   {
+    "protocol": "TCP",
+    "port": 21,
+    "description": "File Transfer [Control]"
+  },
+  {
     "protocol": "UDP",
     "port": 69,
     "description": "TFTP"
@@ -223,10 +198,5 @@
     "protocol": "TCP",
     "port": 2049,
     "description": "NFS"
-  },
-  {
-    "protocol": "TCP",
-    "port": 53,
-    "description": "DNS"
   }
 ]

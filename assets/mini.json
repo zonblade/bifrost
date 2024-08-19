@@ -1,0 +1,67 @@
+[
+    {
+        "protocol": "HTTP",
+        "port": 80,
+        "description": "Web Site Structure Discovery, Apache, Cookie Manipulation, Insecure Direct Object Reference (IDOR), SQL Injection, Arbitrary File Upload, PHP"
+    },
+    {
+        "protocol": "HTTPS",
+        "port": 443,
+        "description": "Web Site Structure Discovery, Apache, Cookie Manipulation, Insecure Direct Object Reference (IDOR), SQL Injection, Arbitrary File Upload, PHP"
+    },
+    {
+        "protocol": "FTP",
+        "port": 21,
+        "description": "FTP"
+    },
+    {
+        "protocol": "Telnet",
+        "port": 23,
+        "description": "Clear Text Credentials"
+    },
+    {
+        "protocol": "WinRM HTTP",
+        "port": 5985,
+        "description": "WinRM"
+    },
+    {
+        "protocol": "WinRM HTTPS",
+        "port": 5986,
+        "description": "WinRM"
+    },
+    {
+        "protocol": "MySQL",
+        "port": 3306,
+        "description": "MySQL, XAMPP"
+    },
+    {
+        "protocol": "SMB",
+        "port": 445,
+        "description": "SMB"
+    },
+    {
+        "protocol": "MSSQL",
+        "port": 1433,
+        "description": "SQL"
+    },
+    {
+        "protocol": "PostgreSQL",
+        "port": 5432,
+        "description": "PostgreSQL"
+    },
+    {
+        "protocol": "MongoDB",
+        "port": 27017,
+        "description": "MongoDB"
+    },
+    {
+        "protocol": "SSH",
+        "port": 22,
+        "description": "Default Credentials"
+    },
+    {
+        "protocol": "RDP",
+        "port": 3389,
+        "description": "Default Credentials"
+    }
+]
