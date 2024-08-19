@@ -23,6 +23,7 @@ impl ClientAi {
             content: String::from(r#"
 if any username/password need to be provided, 
 please use anonymous or default username/password first.
+always target public folder or items first,
 then you can assume. if the flag is found download the flag and stop the intrusion, 
 type command "end" to stop the intrusion program.
             "#),
@@ -40,7 +41,7 @@ and grab the available command to use.
             content: String::from(r#"
 make sure if any address or command did not accidently put space
 FOR EXAMPLE:
-http: //domain.com < this should be http://domain.com
+http: // domain.com < this should be http://domain.com
 also npm i-D this should be npm i -D.
             "#),
         });
@@ -53,8 +54,10 @@ if the command need username password you may try
 - root/root
 - user/user
 - guest/guest
+ALWAYS START TRYING WITH BLANK PASSWORD,
 or replace password with P@ssw0rd or default
 or try to put empty password.
+DENIED access just forget it to try agian.
             "#),
         });
 

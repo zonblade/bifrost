@@ -172,18 +172,18 @@ async fn main() {
 }
 
 async fn run_sessions(ip: String, fingerprint: Vec<PortScanner>) {
-    let mut tasks = Vec::new();
+    // let mut tasks = Vec::new();
     let previous_output = Arc::new(Mutex::new(String::new()));
 
     for (index, port) in fingerprint.into_iter().enumerate() {
         let ip_clone = ip.clone();
         let previous_output_clone = Arc::clone(&previous_output);
-        let task = task::spawn(async move {
-            let _ = terminal_thread(index as i32, ip_clone, port, previous_output_clone).await;
-        });
-        tasks.push(task);
+        let _ = terminal_thread(index as i32, ip_clone, port, previous_output_clone).await;
+        // let task = task::spawn(async move {
+        // });
+        // tasks.push(task);
     }
 
     // Wait for all tasks to complete
-    let _ = join_all(tasks).await;
+    // let _ = join_all(tasks).await;
 }

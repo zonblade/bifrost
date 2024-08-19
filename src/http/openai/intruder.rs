@@ -9,8 +9,8 @@ impl ClientAi {
         let openkey = config::MemData::OpenKey.get_str();
         // get only latest 1580 char from messsage
         let message_len = message.chars().count();
-        let message = if message_len > 2580 {
-            message.chars().skip(message_len - 2580).collect::<String>()
+        let message = if message_len > 2380 {
+            message.chars().skip(message_len - 2380).collect::<String>()
         } else {
             message
         };
@@ -75,7 +75,7 @@ impl ClientAi {
             content: choice.message.content.clone(),
         });
 
-        println!("[INT] {:#?}", self.fragment.messages);
+        // println!("[INT] {:#?}", self.fragment.messages);
 
         choice.message.content.clone()
     }
